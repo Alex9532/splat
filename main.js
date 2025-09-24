@@ -1,4 +1,3 @@
-let cameras = [
     {
         id: 0,
         img_name: "00001",
@@ -418,6 +417,9 @@ function createWorker(self) {
     }
 
     function runSort(viewProj) {
+        if ((buffer.byteLength - byteOffset) % elementSize !== 0) {
+            console.error('Buffer misaligned', buffer.byteLength, byteOffset, elementSize);
+        }
         if (!buffer) return;
         const f_buffer = new Float32Array(buffer);
         if (lastVertexCount == vertexCount) {
