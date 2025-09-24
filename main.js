@@ -1,4 +1,5 @@
-    {
+let cameras = [
+{
         id: 0,
         img_name: "00001",
         width: 1959,
