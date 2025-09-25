@@ -1,20 +1,5 @@
-function safeFloat32(buffer, offset = 0, length) {
-  const size = Float32Array.BYTES_PER_ELEMENT;
-  const available = (buffer.byteLength - offset) / size;
-  if (available < (length ?? available)) {
-    console.error('Misaligned buffer:', {
-      byteLength: buffer.byteLength,
-      offset,
-      requestedLength: length,
-      availableElements: available,
-    });
-    length = Math.floor(available); // fallback
-  }
-  return safeFloat32(buffer, offset, length);
-}
-
 let cameras = [
-{
+    {
         id: 0,
         img_name: "00001",
         width: 1959,
@@ -323,7 +308,8 @@ function createWorker(self) {
     let lastProj = [];
     let depthIndex = new Uint32Array();
     let lastVertexCount = 0;
-    var _floatView = safeFloat32(1);
+
+    var _floatView = new Float32Array(1);
     var _int32View = new Int32Array(_floatView.buffer);
 
     function floatToHalf(float) {
@@ -361,14 +347,14 @@ function createWorker(self) {
 
     function generateTexture() {
         if (!buffer) return;
-        const f_buffer = safeFloat32(buffer);
+        const f_buffer = new Float32Array(buffer);
         const u_buffer = new Uint8Array(buffer);
 
         var texwidth = 1024 * 2; // Set to your desired width
         var texheight = Math.ceil((2 * vertexCount) / texwidth); // Set to your desired height
         var texdata = new Uint32Array(texwidth * texheight * 4); // 4 components per pixel (RGBA)
         var texdata_c = new Uint8Array(texdata.buffer);
-        var texdata_f = safeFloat32(texdata.buffer);
+        var texdata_f = new Float32Array(texdata.buffer);
 
         // Here we convert from a .splat file buffer into a texture
         // With a little bit more foresight perhaps this texture file
@@ -432,11 +418,8 @@ function createWorker(self) {
     }
 
     function runSort(viewProj) {
-        if ((buffer.byteLength - byteOffset) % elementSize !== 0) {
-            console.error('Buffer misaligned', buffer.byteLength, byteOffset, elementSize);
-        }
         if (!buffer) return;
-        const f_buffer = safeFloat32(buffer);
+        const f_buffer = new Float32Array(buffer);
         if (lastVertexCount == vertexCount) {
             let dot =
                 lastProj[2] * viewProj[2] +
@@ -541,7 +524,7 @@ function createWorker(self) {
         );
 
         console.time("calculate importance");
-        let sizeList = safeFloat32(vertexCount);
+        let sizeList = new Float32Array(vertexCount);
         let sizeIndex = new Uint32Array(vertexCount);
         for (row = 0; row < vertexCount; row++) {
             sizeIndex[row] = row;
@@ -571,8 +554,8 @@ function createWorker(self) {
         for (let j = 0; j < vertexCount; j++) {
             row = sizeIndex[j];
 
-            const position = safeFloat32(buffer, j * rowLength, 3);
-            const scales = safeFloat32(buffer, j * rowLength + 4 * 3, 3);
+            const position = new Float32Array(buffer, j * rowLength, 3);
+            const scales = new Float32Array(buffer, j * rowLength + 4 * 3, 3);
             const rgba = new Uint8ClampedArray(
                 buffer,
                 j * rowLength + 4 * 3 + 4 * 3,
@@ -839,7 +822,7 @@ async function main() {
     const u_view = gl.getUniformLocation(program, "view");
 
     // positions
-    const triangleVertices = safeFloat32([-2, -2, 2, -2, 2, 2, -2, 2]);
+    const triangleVertices = new Float32Array([-2, -2, 2, -2, 2, 2, -2, 2]);
     const vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, triangleVertices, gl.STATIC_DRAW);
@@ -862,7 +845,7 @@ async function main() {
     gl.vertexAttribDivisor(a_index, 1);
 
     const resize = () => {
-        gl.uniform2fv(u_focal, safeFloat32([camera.fx, camera.fy]));
+        gl.uniform2fv(u_focal, new Float32Array([camera.fx, camera.fy]));
 
         projectionMatrix = getProjectionMatrix(
             camera.fx,
@@ -871,7 +854,7 @@ async function main() {
             innerHeight,
         );
 
-        gl.uniform2fv(u_viewport, safeFloat32([innerWidth, innerHeight]));
+        gl.uniform2fv(u_viewport, new Float32Array([innerWidth, innerHeight]));
 
         gl.canvas.width = Math.round(innerWidth / downsample);
         gl.canvas.height = Math.round(innerHeight / downsample);
