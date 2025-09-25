@@ -324,7 +324,7 @@ function createWorker(self) {
     let depthIndex = new Uint32Array();
     let lastVertexCount = 0;
 
-    var _floatView = const arr = safeFloat32(1);
+    var _floatView = safeFloat32(1);
     var _int32View = new Int32Array(_floatView.buffer);
 
     function floatToHalf(float) {
@@ -369,7 +369,7 @@ function createWorker(self) {
         var texheight = Math.ceil((2 * vertexCount) / texwidth); // Set to your desired height
         var texdata = new Uint32Array(texwidth * texheight * 4); // 4 components per pixel (RGBA)
         var texdata_c = new Uint8Array(texdata.buffer);
-        var texdata_f = const arr = safeFloat32(texdata.buffer);
+        var texdata_f = safeFloat32(texdata.buffer);
 
         // Here we convert from a .splat file buffer into a texture
         // With a little bit more foresight perhaps this texture file
@@ -542,7 +542,7 @@ function createWorker(self) {
         );
 
         console.time("calculate importance");
-        let sizeList = const arr = safeFloat32(vertexCount);
+        let sizeList = safeFloat32(vertexCount);
         let sizeIndex = new Uint32Array(vertexCount);
         for (row = 0; row < vertexCount; row++) {
             sizeIndex[row] = row;
@@ -863,7 +863,7 @@ async function main() {
     gl.vertexAttribDivisor(a_index, 1);
 
     const resize = () => {
-        gl.uniform2fv(u_focal, const arr = safeFloat32([camera.fx, camera.fy]));
+        gl.uniform2fv(u_focal, safeFloat32([camera.fx, camera.fy]));
 
         projectionMatrix = getProjectionMatrix(
             camera.fx,
@@ -872,7 +872,7 @@ async function main() {
             innerHeight,
         );
 
-        gl.uniform2fv(u_viewport, const arr = safeFloat32([innerWidth, innerHeight]));
+        gl.uniform2fv(u_viewport, safeFloat32([innerWidth, innerHeight]));
 
         gl.canvas.width = Math.round(innerWidth / downsample);
         gl.canvas.height = Math.round(innerHeight / downsample);
