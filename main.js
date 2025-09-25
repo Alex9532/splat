@@ -1,3 +1,18 @@
+function safeFloat32(buffer, offset = 0, length) {
+  const size = Float32Array.BYTES_PER_ELEMENT;
+  const available = (buffer.byteLength - offset) / size;
+  if (available < (length ?? available)) {
+    console.error('Misaligned buffer:', {
+      byteLength: buffer.byteLength,
+      offset,
+      requestedLength: length,
+      availableElements: available,
+    });
+    length = Math.floor(available); // fallback
+  }
+  return safeFloat32(buffer, offset, length);
+}
+
 let cameras = [
 {
         id: 0,
@@ -285,21 +300,6 @@ function rotate4(a, rad, x, y, z) {
     ];
 }
 
-function safeFloat32(buffer, offset = 0, length) {
-  const size = Float32Array.BYTES_PER_ELEMENT;
-  const available = (buffer.byteLength - offset) / size;
-  if (available < (length ?? available)) {
-    console.error('Misaligned buffer:', {
-      byteLength: buffer.byteLength,
-      offset,
-      requestedLength: length,
-      availableElements: available,
-    });
-    length = Math.floor(available); // fallback
-  }
-  return safeFloat32(buffer, offset, length);
-}
-
 function translate4(a, x, y, z) {
     return [
         ...a.slice(0, 12),
@@ -323,7 +323,6 @@ function createWorker(self) {
     let lastProj = [];
     let depthIndex = new Uint32Array();
     let lastVertexCount = 0;
-
     var _floatView = safeFloat32(1);
     var _int32View = new Int32Array(_floatView.buffer);
 
