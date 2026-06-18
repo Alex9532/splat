@@ -791,6 +791,7 @@ async function main() {
     let bgChanged = false;
     // Ensure initial background during load phases
     document.body.style.background = initialBg;
+    let displayedVertexCount = 0;
 
     let projectionMatrix;
 
@@ -1370,7 +1371,14 @@ async function main() {
         const currentFps = 1000 / (now - lastFrame) || 0;
         avgFps = avgFps * 0.9 + currentFps * 0.1;
 
-        if (vertexCount > 0) {
+        // Gradually reveal splats by increasing displayedVertexCount
+        if (displayedVertexCount < vertexCount) {
+            const remaining = vertexCount - displayedVertexCount;
+            const inc = Math.max(1, Math.floor(Math.min(1000, remaining * 0.02)));
+            displayedVertexCount = Math.min(vertexCount, displayedVertexCount + inc);
+        }
+
+        if (displayedVertexCount > 0) {
             document.getElementById("spinner").style.display = "none";
             if (!bgChanged) {
                 document.body.style.background = "black";
@@ -1378,7 +1386,7 @@ async function main() {
             }
             gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
+            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, displayedVertexCount);
         } else {
             gl.clear(gl.COLOR_BUFFER_BIT);
             document.getElementById("spinner").style.display = "";
@@ -1425,9 +1433,17 @@ async function main() {
             fr.readAsText(file);
         } else {
             stopLoading = true;
+            // Reset displayed count and background so the new file reveals again
+            displayedVertexCount = 0;
+            bgChanged = false;
+            document.body.style.background = initialBg;
             fr.onload = () => {
                 splatData = new Uint8Array(fr.result);
                 console.log("Loaded", Math.floor(splatData.length / rowLength));
+                // Ensure reveal starts from zero for this new file
+                displayedVertexCount = 0;
+                bgChanged = false;
+                document.body.style.background = initialBg;
 
                 if (isPly(splatData)) {
                     // ply file magic header means it should be handled differently
