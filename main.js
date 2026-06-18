@@ -759,10 +759,19 @@ async function main() {
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
     const reader = req.body.getReader();
-    let splatData = new Uint8Array(req.headers.get("content-length"));
+
+    // Try to preallocate from Content-Length when available, otherwise start
+    // with an empty buffer and grow dynamically as chunks arrive.
+    const contentLengthHeader = req.headers.get("content-length");
+    const parsedLength = contentLengthHeader
+        ? parseInt(contentLengthHeader, 10)
+        : 0;
+    let splatData = parsedLength > 0 ? new Uint8Array(parsedLength) : new Uint8Array(0);
 
     const downsample =
-        splatData.length / rowLength > 500000 ? 1 : 1 / devicePixelRatio;
+        (parsedLength > 0 ? parsedLength : 0) / rowLength > 500000
+            ? 1
+            : 1 / devicePixelRatio;
     console.log(splatData.length / rowLength, downsample);
 
     const worker = new Worker(
@@ -1451,6 +1460,16 @@ async function main() {
     while (true) {
         const { done, value } = await reader.read();
         if (done || stopLoading) break;
+
+        // Ensure the destination buffer is large enough; grow if necessary.
+        if (bytesRead + value.length > splatData.length) {
+            // Grow to either double size or just large enough to fit new data.
+            let newSize = Math.max(splatData.length * 2, bytesRead + value.length);
+            if (newSize === 0) newSize = bytesRead + value.length;
+            const newBuf = new Uint8Array(newSize);
+            if (bytesRead > 0) newBuf.set(splatData.subarray(0, bytesRead));
+            splatData = newBuf;
+        }
 
         splatData.set(value, bytesRead);
         bytesRead += value.length;
