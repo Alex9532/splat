@@ -1,27 +1,37 @@
 let cameras = [
-    {
-        id: 0,
-        img_name: "00001",
-        width: 1959,
-        height: 1090,
-        position: [
-            -3.0089893469241797, -0.11086489695181866, -3.7527640949141428,
-        ],
-        rotation: [
-            [0.876134201218856, 0.06925962026449776, 0.47706599800804744],
-            [-0.04747421839895102, 0.9972110940209488, -0.057586739349882114],
-            [-0.4797239414934443, 0.027805376500959853, 0.8769787916452908],
-        ],
-        fy: 1164.6601287484507,
-        fx: 1159.5880733038064,
-    },
-    {
-        id: 1,
-        img_name: "00009",
-        width: 1959,
-        height: 1090,
-        position: [
-            -2.5199776022057296, -0.09704735754873686, -3.6247725540304545,
+        } else {
+            stopLoading = true;
+            // Reset background so loading screen shows while new file loads
+            bgChanged = false;
+            document.body.style.background = initialBg;
+
+            fr.onload = () => {
+                splatData = new Uint8Array(fr.result);
+                console.log("Loaded", Math.floor(splatData.length / rowLength));
+
+                // Ensure background/reset flag before passing data to worker
+                bgChanged = false;
+                document.body.style.background = initialBg;
+
+                if (isPly(splatData)) {
+                    // ply file magic header means it should be handled differently
+                    const usableBytes = Math.floor(splatData.length / rowLength) * rowLength || splatData.length;
+                    const sendBuf = splatData.buffer.slice(0, usableBytes);
+                    worker.postMessage({ ply: sendBuf, save: true }, [sendBuf]);
+                } else {
+                    const usableBytes = Math.floor(splatData.length / rowLength) * rowLength;
+                    const sendBuf = splatData.buffer.slice(0, usableBytes);
+                    worker.postMessage(
+                        {
+                            buffer: sendBuf,
+                            vertexCount: Math.floor(splatData.length / rowLength),
+                        },
+                        [sendBuf],
+                    );
+                }
+            };
+            fr.readAsArrayBuffer(file);
+        }
         ],
         rotation: [
             [0.9982731285632193, -0.011928707708098955, -0.05751927260507243],
@@ -787,6 +797,10 @@ async function main() {
     const canvas = document.getElementById("canvas");
     const fps = document.getElementById("fps");
     const camid = document.getElementById("camid");
+    const initialBg = "#083301";
+    let bgChanged = false;
+    // Ensure initial background during load phases
+    document.body.style.background = initialBg;
 
     let projectionMatrix;
 
@@ -1368,6 +1382,10 @@ async function main() {
 
         if (vertexCount > 0) {
             document.getElementById("spinner").style.display = "none";
+            if (!bgChanged) {
+                document.body.style.background = "black";
+                bgChanged = true;
+            }
             gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
