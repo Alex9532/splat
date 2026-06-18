@@ -860,6 +860,40 @@ async function main() {
     gl.vertexAttribIPointer(a_index, 1, gl.INT, false, 0, 0);
     gl.vertexAttribDivisor(a_index, 1);
 
+    let radialOrder = null;
+    let currentDepthIndex = null;
+    let lastDisplayedCount = 0;
+    let numVertices = 0;
+    let drawCount = 0;
+
+    function updateVisibleIndices() {
+        if (!radialOrder) {
+            drawCount = 0;
+            return;
+        }
+        let out;
+        const want = Math.min(displayedVertexCount, numVertices);
+        if (currentDepthIndex) {
+            const mask = new Uint8Array(numVertices);
+            for (let i = 0; i < want; i++) mask[radialOrder[i]] = 1;
+            const filtered = new Uint32Array(want);
+            let k = 0;
+            for (let i = 0; i < currentDepthIndex.length; i++) {
+                const v = currentDepthIndex[i];
+                if (mask[v]) filtered[k++] = v;
+                if (k === want) break;
+            }
+            out = filtered.subarray(0, k);
+            drawCount = k;
+        } else {
+            out = new Uint32Array(radialOrder.subarray(0, want));
+            drawCount = out.length;
+        }
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, out, gl.DYNAMIC_DRAW);
+    }
+
     const resize = () => {
         gl.uniform2fv(u_focal, new Float32Array([camera.fx, camera.fy]));
 
@@ -885,6 +919,42 @@ async function main() {
     worker.onmessage = (e) => {
         if (e.data.buffer) {
             splatData = new Uint8Array(e.data.buffer);
+
+            // Build radial reveal order from vertex positions (center -> out)
+            numVertices = Math.floor(splatData.length / rowLength);
+            const f = new Float32Array(splatData.buffer);
+            let cx = 0,
+                cy = 0,
+                cz = 0;
+            for (let i = 0; i < numVertices; i++) {
+                cx += f[8 * i + 0];
+                cy += f[8 * i + 1];
+                cz += f[8 * i + 2];
+            }
+            if (numVertices > 0) {
+                cx /= numVertices;
+                cy /= numVertices;
+                cz /= numVertices;
+            }
+
+            const dist = new Float32Array(numVertices);
+            const idxArr = new Array(numVertices);
+            for (let i = 0; i < numVertices; i++) {
+                idxArr[i] = i;
+                const dx = f[8 * i + 0] - cx;
+                const dy = f[8 * i + 1] - cy;
+                const dz = f[8 * i + 2] - cz;
+                dist[i] = Math.hypot(dx, dy, dz);
+            }
+            idxArr.sort((a, b) => dist[a] - dist[b]);
+            radialOrder = new Uint32Array(idxArr);
+            // If depth ordering already exists, update visible indices immediately
+            updateVisibleIndices();
+
+            // Reset reveal counters so the new file reveals from center
+            displayedVertexCount = 0;
+            lastDisplayedCount = 0;
+
             if (e.data.save) {
                 const blob = new Blob([splatData.buffer], {
                     type: "application/octet-stream",
@@ -927,8 +997,10 @@ async function main() {
             gl.bindTexture(gl.TEXTURE_2D, texture);
         } else if (e.data.depthIndex) {
             const { depthIndex, viewProj } = e.data;
-            gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, depthIndex, gl.DYNAMIC_DRAW);
+            // store depth index and rebuild the visible index buffer according to radial reveal
+            currentDepthIndex = depthIndex;
+            // ensure we have numVertices set; updateVisibleIndices will handle if radialOrder exists
+            updateVisibleIndices();
             vertexCount = e.data.vertexCount;
         }
     };
@@ -1371,11 +1443,17 @@ async function main() {
         const currentFps = 1000 / (now - lastFrame) || 0;
         avgFps = avgFps * 0.9 + currentFps * 0.1;
 
-        // Gradually reveal splats by increasing displayedVertexCount
+        // Gradually reveal splats by increasing displayedVertexCount (faster)
         if (displayedVertexCount < vertexCount) {
             const remaining = vertexCount - displayedVertexCount;
-            const inc = Math.max(1, Math.floor(Math.min(1000, remaining * 0.02)));
+            const inc = Math.max(1, Math.floor(Math.min(2000, remaining * 0.06)));
             displayedVertexCount = Math.min(vertexCount, displayedVertexCount + inc);
+        }
+
+        // If the visible set changed, update the index buffer to reflect radial + depth order
+        if (displayedVertexCount !== lastDisplayedCount) {
+            updateVisibleIndices();
+            lastDisplayedCount = displayedVertexCount;
         }
 
         if (displayedVertexCount > 0) {
@@ -1386,7 +1464,7 @@ async function main() {
             }
             gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, displayedVertexCount);
+            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount || displayedVertexCount);
         } else {
             gl.clear(gl.COLOR_BUFFER_BIT);
             document.getElementById("spinner").style.display = "";
