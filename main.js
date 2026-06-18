@@ -766,7 +766,9 @@ async function main() {
     const parsedLength = contentLengthHeader
         ? parseInt(contentLengthHeader, 10)
         : 0;
-    let splatData = parsedLength > 0 ? new Uint8Array(parsedLength) : new Uint8Array(0);
+    // Make sure preallocated size (if any) is aligned to rowLength
+    const initialSize = parsedLength > 0 ? Math.ceil(parsedLength / rowLength) * rowLength : 0;
+    let splatData = initialSize > 0 ? new Uint8Array(initialSize) : new Uint8Array(0);
 
     const downsample =
         (parsedLength > 0 ? parsedLength : 0) / rowLength > 500000
@@ -1421,12 +1423,19 @@ async function main() {
 
                 if (isPly(splatData)) {
                     // ply file magic header means it should be handled differently
-                    worker.postMessage({ ply: splatData.buffer, save: true });
+                    const usableBytes = Math.floor(splatData.length / rowLength) * rowLength || splatData.length;
+                    const sendBuf = splatData.buffer.slice(0, usableBytes);
+                    worker.postMessage({ ply: sendBuf, save: true }, [sendBuf]);
                 } else {
-                    worker.postMessage({
-                        buffer: splatData.buffer,
-                        vertexCount: Math.floor(splatData.length / rowLength),
-                    });
+                    const usableBytes = Math.floor(splatData.length / rowLength) * rowLength;
+                    const sendBuf = splatData.buffer.slice(0, usableBytes);
+                    worker.postMessage(
+                        {
+                            buffer: sendBuf,
+                            vertexCount: Math.floor(splatData.length / rowLength),
+                        },
+                        [sendBuf],
+                    );
                 }
             };
             fr.readAsArrayBuffer(file);
@@ -1466,6 +1475,8 @@ async function main() {
             // Grow to either double size or just large enough to fit new data.
             let newSize = Math.max(splatData.length * 2, bytesRead + value.length);
             if (newSize === 0) newSize = bytesRead + value.length;
+            // Align to rowLength so downstream typed-array views won't fail.
+            newSize = Math.ceil(newSize / rowLength) * rowLength;
             const newBuf = new Uint8Array(newSize);
             if (bytesRead > 0) newBuf.set(splatData.subarray(0, bytesRead));
             splatData = newBuf;
@@ -1476,10 +1487,17 @@ async function main() {
 
         if (vertexCount > lastVertexCount) {
             if (!isPly(splatData)) {
-                worker.postMessage({
-                    buffer: splatData.buffer,
-                    vertexCount: Math.floor(bytesRead / rowLength),
-                });
+                const usableBytes = Math.floor(bytesRead / rowLength) * rowLength;
+                if (usableBytes > 0) {
+                    const sendBuf = splatData.buffer.slice(0, usableBytes);
+                    worker.postMessage(
+                        {
+                            buffer: sendBuf,
+                            vertexCount: Math.floor(bytesRead / rowLength),
+                        },
+                        [sendBuf],
+                    );
+                }
             }
             lastVertexCount = vertexCount;
         }
@@ -1487,12 +1505,19 @@ async function main() {
     if (!stopLoading) {
         if (isPly(splatData)) {
             // ply file magic header means it should be handled differently
-            worker.postMessage({ ply: splatData.buffer, save: false });
+            const usableBytes = Math.floor(bytesRead / rowLength) * rowLength || bytesRead;
+            const sendBuf = splatData.buffer.slice(0, usableBytes);
+            worker.postMessage({ ply: sendBuf, save: false }, [sendBuf]);
         } else {
-            worker.postMessage({
-                buffer: splatData.buffer,
-                vertexCount: Math.floor(bytesRead / rowLength),
-            });
+            const usableBytes = Math.floor(bytesRead / rowLength) * rowLength;
+            const sendBuf = splatData.buffer.slice(0, usableBytes);
+            worker.postMessage(
+                {
+                    buffer: sendBuf,
+                    vertexCount: Math.floor(bytesRead / rowLength),
+                },
+                [sendBuf],
+            );
         }
     }
 }
