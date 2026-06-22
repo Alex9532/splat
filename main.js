@@ -1403,10 +1403,10 @@ async function main() {
         splatData[2] == 121 &&
         splatData[3] == 10;
 
-    const selectFile = async (file) => {
+    const selectFile = (file) => {
         const fr = new FileReader();
         if (/\.json$/i.test(file.name)) {
-            fr.onload = () => {
+            fr.onload = async () => {
                 cameras = JSON.parse(fr.result);
                 viewMatrix = getViewMatrix(cameras[0]);
                 projectionMatrix = getProjectionMatrix(
@@ -1422,8 +1422,8 @@ async function main() {
             fr.readAsText(file);
         } else {
             stopLoading = true;
-            await new Promise(resolve => setTimeout(resolve, 1000));
             fr.onload = () => {
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 splatData = new Uint8Array(fr.result);
                 console.log("Loaded", Math.floor(splatData.length / rowLength));
 
