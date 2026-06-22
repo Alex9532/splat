@@ -186,7 +186,6 @@
 				background: #083301;
 			}
 
-			/* intro overlay */
 			#intro {
 				position: fixed;
 				inset: 0;
@@ -196,7 +195,7 @@
 				flex-direction: column;
 				align-items: center;
 				justify-content: center;
-				gap: 24px;
+				gap: 28px;
 				pointer-events: none;
 			}
 			#intro.hiding {
@@ -210,11 +209,21 @@
 				height: 5px;
 				background: rgba(34,255,0,0.2);
 			}
+			.title-box {
+  				position: absolute;
+  				top: 50%;
+  				left: 50%;
+  				transform: translateX(-50%);
+  				margin-bottom: 75px; 
+  				width: max-content;          
+  				text-align: center;
+			}
+
 			#intro-bar {
 				height: 100%;
 				width: 0%;
 				background: #22ff00;
-				transition: width 0.1s ease-in-out;
+				transition: width 0.01s ease-in-out;
 			}
 			#intro-status {
 				font-size: x-small;
@@ -239,6 +248,7 @@
 		</script>
 
 		<div id="intro">
+			<title class="title-box">WebGL Gaussian Splat Veiwer</title>
 			<div id="message"></div>
 			<div class="cube-wrapper">
 				<div class="cube">
