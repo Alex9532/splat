@@ -745,6 +745,9 @@ async function main() {
         viewMatrix = JSON.parse(decodeURIComponent(location.hash.slice(1)));
         carousel = false;
     } catch (err) {}
+    document.getElementById('intro-status').textContent = "Downloading";
+    document.getElementById('intro-status').classList.remove('pause-anim');
+    document.getElementById('intro-progress').classList.remove('hidden-thingy');
     const url = new URL(
         // "nike.splat",
         // location.href,
@@ -753,9 +756,7 @@ async function main() {
         "https://alex9532.github.io/",
         "https://alex9532.github.io/splat/",
     );
-    document.getElementById('intro-status').textContent = "Downloading";
-    document.getElementById('intro-status').classList.remove('pause-anim');
-    document.getElementById('intro-progress').classList.remove('hidden-thingy');
+    
     const req = await fetch(url, {
         mode: "cors", // no-cors, *cors, same-origin
         credentials: "omit", // include, *same-origin, omit
