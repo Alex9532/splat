@@ -414,7 +414,7 @@ function createWorker(self) {
             texdata[8 * i + 6] = packHalf2x16(4 * sigma[4], 4 * sigma[5]);
         }
 
-        self.postMessage({ texdata, texwidth, texheight }, [texdata.buffer]);
+        self.postMessage({ texdata, texwidth, texheight, vertexCount }, [texdata.buffer]);
     }
 
     function runSort(viewProj) {
@@ -597,13 +597,14 @@ function createWorker(self) {
     self.onmessage = (e) => {
         if (e.data.ply) {
             vertexCount = 0;
-            runSort(viewProj);
             buffer = processPlyBuffer(e.data.ply);
             vertexCount = Math.floor(buffer.byteLength / rowLength);
-            postMessage({ buffer: buffer, save: !!e.data.save });
+            generateTexture();
+            postMessage({ buffer: buffer, save: !!e.data.save, vertexCount });
         } else if (e.data.buffer) {
             buffer = e.data.buffer;
             vertexCount = e.data.vertexCount;
+            generateTexture();
         } else if (e.data.vertexCount) {
             vertexCount = e.data.vertexCount;
         } else if (e.data.view) {
@@ -764,6 +765,7 @@ async function main() {
         ? parseFloat(params.get("revealFraction"))
         : 0;
     const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000;
+    const depthSort = params.has("useDepthSort");
 
     let projectionMatrix;
 
@@ -861,6 +863,12 @@ async function main() {
         }
         if (e.data.buffer) {
             splatData = new Uint8Array(e.data.buffer);
+            if (!depthSort) {
+                const depthIndex = new Uint32Array(e.data.vertexCount);
+                for (let i = 0; i < e.data.vertexCount; i++) depthIndex[i] = i;
+                gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, depthIndex, gl.DYNAMIC_DRAW);
+            }
             if (e.data.save) {
                 const blob = new Blob([splatData.buffer], {
                     type: "application/octet-stream",
@@ -872,7 +880,14 @@ async function main() {
                 link.click();
             }
         } else if (e.data.texdata) {
-            const { texdata, texwidth, texheight } = e.data;
+            const { texdata, texwidth, texheight, vertexCount: texVertexCount } = e.data;
+            vertexCount = texVertexCount;
+            if (!depthSort) {
+                const depthIndex = new Uint32Array(vertexCount);
+                for (let i = 0; i < vertexCount; i++) depthIndex[i] = i;
+                gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, depthIndex, gl.DYNAMIC_DRAW);
+            }
             // console.log(texdata)
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.texParameteri(
@@ -902,7 +917,7 @@ async function main() {
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, texture);
         } else if (e.data.depthIndex) {
-            const { depthIndex, viewProj } = e.data;
+            const { depthIndex } = e.data;
             gl.bindBuffer(gl.ARRAY_BUFFER, indexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, depthIndex, gl.DYNAMIC_DRAW);
             vertexCount = e.data.vertexCount;
@@ -1342,7 +1357,9 @@ async function main() {
         let actualViewMatrix = invert4(inv2);
 
         const viewProj = multiply4(projectionMatrix, actualViewMatrix);
-        worker.postMessage({ view: viewProj });
+        if (depthSort) {
+            worker.postMessage({ view: viewProj });
+        }
 
         const currentFps = 1000 / (now - lastFrame) || 0;
         avgFps = avgFps * 0.9 + currentFps * 0.1;
@@ -1350,10 +1367,18 @@ async function main() {
         // Gradually reveal loaded gaussians
         if (displayedVertexCount < vertexCount) {
             const remaining = vertexCount - displayedVertexCount;
-            const toReveal = Math.min(
-                Math.ceil(remaining * revealFraction),
-                maxRevealPerFrame
-            );
+            let toReveal;
+            if (revealCount > 0) {
+                toReveal = revealCount;
+            } else if (revealFraction > 0) {
+                toReveal = Math.min(
+                    Math.ceil(remaining * revealFraction),
+                    maxRevealPerFrame,
+                );
+            } else {
+                toReveal = remaining;
+            }
+            toReveal = Math.max(1, Math.min(toReveal, remaining));
             displayedVertexCount += toReveal;
         } else {
             displayedVertexCount = vertexCount;
