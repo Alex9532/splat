@@ -1380,6 +1380,7 @@ async function main() {
         const progress = (100 * vertexCount) / (splatData.length / rowLength);
         if (progress < 100) {
             document.getElementById("progress").style.width = progress + "%";
+            
         } else {
             document.getElementById("progress").style.display = "none";
         }
@@ -1491,6 +1492,7 @@ async function main() {
             const pct = parsedLength > 0
                 ? Math.min(99, (bytesRead / parsedLength) * 100)
                 : Math.min(99, Math.min(bytesRead / 30_000_000, 1) * 99);
+            document.body.style.background = "#083301";
             window.introSetProgress(pct);
         }
 
@@ -1512,7 +1514,10 @@ async function main() {
         }
     }
     if (!stopLoading) {
-        if (window.introSetProgress) window.introSetProgress(100);
+        if (window.introSetProgress) {
+            window.introSetProgress(100);
+            document.body.style.background = "black";
+        }
         if (isPly(splatData)) {
             // ply file magic header means it should be handled differently
             const usableBytes = Math.floor(bytesRead / rowLength) * rowLength || bytesRead;
