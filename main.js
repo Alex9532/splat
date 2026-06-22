@@ -1531,6 +1531,37 @@ async function main() {
                 bgChanged = false;
                 document.body.style.background = initialBg;
 
+                // Build radial reveal order now for .splat files so the loader can progress
+                if (!isPly(splatData)) {
+                    numVertices = Math.floor(splatData.length / rowLength);
+                    if (numVertices > 0) {
+                        const f = new Float32Array(splatData.buffer, 0, numVertices * 8);
+                        let cx = 0,
+                            cy = 0,
+                            cz = 0;
+                        for (let i = 0; i < numVertices; i++) {
+                            cx += f[8 * i + 0];
+                            cy += f[8 * i + 1];
+                            cz += f[8 * i + 2];
+                        }
+                        cx /= numVertices;
+                        cy /= numVertices;
+                        cz /= numVertices;
+                        const dist = new Float32Array(numVertices);
+                        const idxArr = new Array(numVertices);
+                        for (let i = 0; i < numVertices; i++) {
+                            idxArr[i] = i;
+                            const dx = f[8 * i + 0] - cx;
+                            const dy = f[8 * i + 1] - cy;
+                            const dz = f[8 * i + 2] - cz;
+                            dist[i] = Math.hypot(dx, dy, dz);
+                        }
+                        idxArr.sort((a, b) => dist[a] - dist[b]);
+                        radialOrder = new Uint32Array(idxArr);
+                        updateVisibleIndices();
+                    }
+                }
+
                 if (isPly(splatData)) {
                     // ply file magic header means it should be handled differently
                     const usableBytes = Math.floor(splatData.length / rowLength) * rowLength || splatData.length;
