@@ -424,10 +424,8 @@ function createWorker(self) {
             lastVertexCount = vertexCount;
         }
 
-        if (depthIndex.length !== vertexCount) {
-            depthIndex = new Uint32Array(vertexCount);
-            for (let i = 0; i < vertexCount; i++) depthIndex[i] = i;
-        }
+        const depthIndex = new Uint32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i++) depthIndex[i] = i;
 
         self.postMessage({ depthIndex, viewProj, vertexCount }, [
             depthIndex.buffer,
