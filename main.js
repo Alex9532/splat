@@ -1542,5 +1542,6 @@ async function main() {
 
 main().catch((err) => {
     document.getElementById("spinner").style.display = "none";
+    document.getElementById("spinner-2").style.display = "none";
     document.getElementById("message").innerText = err.toString();
 });
