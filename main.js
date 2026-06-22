@@ -1423,10 +1423,9 @@ async function main() {
         } else {
             stopLoading = true;
             fr.onload = async () => {
-                if (window.introHide) { window.introHide(); window.introHide = null; }
-                await new Promise(resolve => setTimeout(resolve, 1000));
                 splatData = new Uint8Array(fr.result);
                 console.log("Loaded", Math.floor(splatData.length / rowLength));
+                await new Promise(resolve => setTimeout(resolve, 3000));
 
                 if (isPly(splatData)) {
                     // ply file magic header means it should be handled differently
