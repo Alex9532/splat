@@ -1456,7 +1456,7 @@ async function main() {
             lastDisplayedCount = displayedVertexCount;
         }
 
-        if (displayedVertexCount > 0) {
+        if (drawCount > 0) {
             document.getElementById("spinner").style.display = "none";
             if (!bgChanged) {
                 document.body.style.background = "black";
@@ -1464,7 +1464,7 @@ async function main() {
             }
             gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount || displayedVertexCount);
+            gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, drawCount);
         } else {
             gl.clear(gl.COLOR_BUFFER_BIT);
             document.getElementById("spinner").style.display = "";
@@ -1512,14 +1512,22 @@ async function main() {
         } else {
             stopLoading = true;
             // Reset displayed count and background so the new file reveals again
+            radialOrder = null;
+            currentDepthIndex = null;
+            drawCount = 0;
             displayedVertexCount = 0;
+            lastDisplayedCount = 0;
             bgChanged = false;
             document.body.style.background = initialBg;
             fr.onload = () => {
                 splatData = new Uint8Array(fr.result);
                 console.log("Loaded", Math.floor(splatData.length / rowLength));
                 // Ensure reveal starts from zero for this new file
+                radialOrder = null;
+                currentDepthIndex = null;
+                drawCount = 0;
                 displayedVertexCount = 0;
+                lastDisplayedCount = 0;
                 bgChanged = false;
                 document.body.style.background = initialBg;
 
