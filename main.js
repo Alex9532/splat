@@ -479,6 +479,7 @@ function createWorker(self) {
         const header_end_index = header.indexOf(header_end);
         if (header_end_index < 0)
             throw new Error("Unable to read .ply file header");
+        
         const vertexCount = parseInt(/element vertex (\d+)\n/.exec(header)[1]);
         console.log("Vertex Count", vertexCount);
         let row_offset = 0,
@@ -758,6 +759,8 @@ async function main() {
     console.log(req);
     if (req.status != 200)
         throw new Error(req.status + " Unable to load " + req.url);
+        document.getElementById("cube-wrapper").style.display = "none";
+        document.getElementById("message").innerText = err.toString();
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
     const reader = req.body.getReader();
@@ -1540,6 +1543,6 @@ async function main() {
 }
 
 main().catch((err) => {
-    document.getElementById("spinner").style.display = "none";
+    document.getElementById("cube-wrapper").style.display = "none";
     document.getElementById("message").innerText = err.toString();
 });
