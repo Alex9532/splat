@@ -797,8 +797,8 @@ async function main() {
     // - revealFraction: fraction of remaining splats to reveal per frame (0..1)
     // - maxRevealPerFrame: cap on how many splats we reveal in a single frame
     // Control via URL: ?revealFraction=0.1&maxRevealPerFrame=500
-    const revealFraction = parseFloat(params.get("revealFraction")) || 0.0005; // default: 100% of remaining per frame
-    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 200; // safety cap
+    const revealFraction = parseFloat(params.get("revealFraction")) || 1.0; // default: 100% of remaining per frame
+    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000; // safety cap
 
     let projectionMatrix;
 
@@ -892,6 +892,8 @@ async function main() {
     worker.onmessage = (e) => {
         if (e.data.buffer) {
             splatData = new Uint8Array(e.data.buffer);
+            document.getElementById("message").innerText = "";
+            document.getElementById("spinner").style.display = "none";
             if (e.data.save) {
                 const blob = new Blob([splatData.buffer], {
                     type: "application/octet-stream",
