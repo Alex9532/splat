@@ -1403,7 +1403,7 @@ async function main() {
         splatData[2] == 121 &&
         splatData[3] == 10;
 
-    const selectFile = (file) => {
+    const selectFile = async (file) => {
         const fr = new FileReader();
         if (/\.json$/i.test(file.name)) {
             fr.onload = () => {
