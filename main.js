@@ -1534,6 +1534,7 @@ async function main() {
                 // Build radial reveal order now for .splat files so the loader can progress
                 if (!isPly(splatData)) {
                     numVertices = Math.floor(splatData.length / rowLength);
+                    vertexCount = numVertices;
                     if (numVertices > 0) {
                         const f = new Float32Array(splatData.buffer, 0, numVertices * 8);
                         let cx = 0,
