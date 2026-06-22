@@ -434,59 +434,11 @@ function createWorker(self) {
         }
 
         console.time("sort");
-        let maxDepth = -Infinity;
-        let minDepth = Infinity;
-        let sizeList = new Int32Array(vertexCount);
-        for (let i = 0; i < vertexCount; i++) {
-            // Primary sort key: depth (z-distance), scaled to integer space
-            let depth =
-                ((viewProj[2] * f_buffer[8 * i + 0] +
-                    viewProj[6] * f_buffer[8 * i + 1] +
-                    viewProj[10] * f_buffer[8 * i + 2]) *
-                    4096) |
-                0;
-
-            // Compute projected NDC position but guard against w==0 / non-finite
-            let x = viewProj[0] * f_buffer[8 * i + 0] + viewProj[4] * f_buffer[8 * i + 1] + viewProj[8] * f_buffer[8 * i + 2] + viewProj[12];
-            let y = viewProj[1] * f_buffer[8 * i + 0] + viewProj[5] * f_buffer[8 * i + 1] + viewProj[9] * f_buffer[8 * i + 2] + viewProj[13];
-            let w = viewProj[3] * f_buffer[8 * i + 0] + viewProj[7] * f_buffer[8 * i + 1] + viewProj[11] * f_buffer[8 * i + 2] + viewProj[15];
-            if (!isFinite(w) || Math.abs(w) < 1e-6) {
-                x = 0; y = 0;
-            } else {
-                x /= w;
-                y /= w;
-            }
-
-            // Small, bounded center bias so near-center splats reveal slightly earlier
-            let centerDist = Math.sqrt(x * x + y * y);
-            if (!isFinite(centerDist)) centerDist = 0;
-            if (centerDist > 1) centerDist = 1;
-
-            const CENTER_WEIGHT = 0.2; // <=1, smaller values keep depth dominant
-            // Scale center distance into same integer domain as depth and apply weight
-            let centerOffset = ((centerDist * 4096) * CENTER_WEIGHT) | 0;
-
-            let sortKey = depth + centerOffset;
-
-            sizeList[i] = sortKey;
-            if (sortKey > maxDepth) maxDepth = sortKey;
-            if (sortKey < minDepth) minDepth = sortKey;
-        }
-
-        // This is a 16 bit single-pass counting sort
-        let depthInv = (maxDepth === minDepth) ? 1 : (256 * 256 - 1) / (maxDepth - minDepth);
-        let counts0 = new Uint32Array(256 * 256);
-        for (let i = 0; i < vertexCount; i++) {
-            sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
-            counts0[sizeList[i]]++;
-        }
-        let starts0 = new Uint32Array(256 * 256);
-        for (let i = 1; i < 256 * 256; i++)
-            starts0[i] = starts0[i - 1] + counts0[i - 1];
+        // No sorting — reveal gaussians in original order
         depthIndex = new Uint32Array(vertexCount);
-        for (let i = 0; i < vertexCount; i++)
-            depthIndex[starts0[sizeList[i]]++] = i;
-
+        for (let i = 0; i < vertexCount; i++) {
+            depthIndex[i] = i;
+        }
         console.timeEnd("sort");
 
         lastProj = viewProj;
