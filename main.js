@@ -434,11 +434,35 @@ function createWorker(self) {
         }
 
         console.time("sort");
-        // No sorting — reveal gaussians in original order
-        depthIndex = new Uint32Array(vertexCount);
+        let maxDepth = -Infinity;
+        let minDepth = Infinity;
+        let sizeList = new Int32Array(vertexCount);
         for (let i = 0; i < vertexCount; i++) {
-            depthIndex[i] = i;
+            let depth =
+                ((viewProj[2] * f_buffer[8 * i + 0] +
+                    viewProj[6] * f_buffer[8 * i + 1] +
+                    viewProj[10] * f_buffer[8 * i + 2]) *
+                    4096) |
+                0;
+            sizeList[i] = depth;
+            if (depth > maxDepth) maxDepth = depth;
+            if (depth < minDepth) minDepth = depth;
         }
+
+        // This is a 16 bit single-pass counting sort
+        let depthInv = (maxDepth === minDepth) ? 1 : (256 * 256 - 1) / (maxDepth - minDepth);
+        let counts0 = new Uint32Array(256 * 256);
+        for (let i = 0; i < vertexCount; i++) {
+            sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
+            counts0[sizeList[i]]++;
+        }
+        let starts0 = new Uint32Array(256 * 256);
+        for (let i = 1; i < 256 * 256; i++)
+            starts0[i] = starts0[i - 1] + counts0[i - 1];
+        depthIndex = new Uint32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i++)
+            depthIndex[starts0[sizeList[i]]++] = i;
+
         console.timeEnd("sort");
 
         lastProj = viewProj;
