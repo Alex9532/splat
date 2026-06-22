@@ -794,11 +794,11 @@ async function main() {
     let displayedVertexCount = 0;
 
     // Reveal parameters (tweak these constants to change incremental reveal speed)
-    // - REVEAL_FRACTION: fraction of remaining splats to reveal per frame (0..1)
-    // - MAX_REVEAL_PER_FRAME: cap on how many splats we reveal in a single frame
-    // Set REVEAL_FRACTION to 0 for one-per-frame behavior.
-    const REVEAL_FRACTION = 1.00; // default: 100% of remaining per frame
-    const MAX_REVEAL_PER_FRAME = 2000; // safety cap
+    // - revealFraction: fraction of remaining splats to reveal per frame (0..1)
+    // - maxRevealPerFrame: cap on how many splats we reveal in a single frame
+    // Control via URL: ?revealFraction=0.1&maxRevealPerFrame=500
+    const revealFraction = parseFloat(params.get("revealFraction")) || 0.01; // default: 100% of remaining per frame
+    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000; // safety cap
 
     let projectionMatrix;
 
@@ -1378,8 +1378,17 @@ async function main() {
         const currentFps = 1000 / (now - lastFrame) || 0;
         avgFps = avgFps * 0.9 + currentFps * 0.1;
 
-        // Display all loaded gaussians
-        displayedVertexCount = vertexCount;
+        // Gradually reveal loaded gaussians
+        if (displayedVertexCount < vertexCount) {
+            const remaining = vertexCount - displayedVertexCount;
+            const toReveal = Math.min(
+                Math.ceil(remaining * revealFraction),
+                maxRevealPerFrame
+            );
+            displayedVertexCount += toReveal;
+        } else {
+            displayedVertexCount = vertexCount;
+        }
 
         if (displayedVertexCount > 0) {
             document.getElementById("spinner").style.display = "none";
