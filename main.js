@@ -797,8 +797,8 @@ async function main() {
     // - revealFraction: fraction of remaining splats to reveal per frame (0..1)
     // - maxRevealPerFrame: cap on how many splats we reveal in a single frame
     // Control via URL: ?revealFraction=0.1&maxRevealPerFrame=500
-    const revealFraction = parseFloat(params.get("revealFraction")) || 0.01; // default: 100% of remaining per frame
-    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000; // safety cap
+    const revealFraction = parseFloat(params.get("revealFraction")) || 0.0005; // default: 100% of remaining per frame
+    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 200; // safety cap
 
     let projectionMatrix;
 
@@ -1502,6 +1502,10 @@ async function main() {
     let lastVertexCount = -1;
     let stopLoading = false;
 
+    const messageEl = document.getElementById("message");
+    const progressEl = document.getElementById("progress");
+
+    // Download the entire file first
     while (true) {
         const { done, value } = await reader.read();
         if (done || stopLoading) break;
@@ -1521,24 +1525,17 @@ async function main() {
         splatData.set(value, bytesRead);
         bytesRead += value.length;
 
-        if (vertexCount > lastVertexCount) {
-            if (!isPly(splatData)) {
-                const usableBytes = Math.floor(bytesRead / rowLength) * rowLength;
-                if (usableBytes > 0) {
-                    const sendBuf = splatData.buffer.slice(0, usableBytes);
-                    worker.postMessage(
-                        {
-                            buffer: sendBuf,
-                            vertexCount: Math.floor(bytesRead / rowLength),
-                        },
-                        [sendBuf],
-                    );
-                }
-            }
-            lastVertexCount = vertexCount;
+        // Show download progress
+        if (contentLengthHeader) {
+            const progress = (100 * bytesRead) / parsedLength;
+            progressEl.style.width = progress + "%";
+            messageEl.innerText = `Downloading... ${Math.round(progress)}%`;
         }
     }
+    
+    // Download complete, now process the full buffer
     if (!stopLoading) {
+        messageEl.innerText = "Processing...";
         if (isPly(splatData)) {
             // ply file magic header means it should be handled differently
             const usableBytes = Math.floor(bytesRead / rowLength) * rowLength || bytesRead;
