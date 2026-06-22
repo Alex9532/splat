@@ -264,6 +264,7 @@
 			window.introHide = function() {
 				const el = document.getElementById('intro');
 				el.classList.add('hiding');
+				document.body.style.background = "black";
 				el.addEventListener('animationend', () => { el.style.display = 'none'; }, { once: true });
 			};
 		</script>
