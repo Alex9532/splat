@@ -738,6 +738,7 @@ let defaultViewMatrix = [
 ];
 let viewMatrix = defaultViewMatrix;
 async function main() {
+    await new Promise(resolve => setTimeout(resolve, 2300));
     let carousel = true;
     const params = new URLSearchParams(location.search);
     try {
@@ -752,13 +753,16 @@ async function main() {
         "https://alex9532.github.io/",
         "https://alex9532.github.io/splat/",
     );
+    document.getElementById('intro-status').textContent = "Downloading";
+    document.getElementById('intro-status').classList.remove('pause-anim');
+    document.getElementById('intro-progress').classList.remove('hidden-thingy');
     const req = await fetch(url, {
         mode: "cors", // no-cors, *cors, same-origin
         credentials: "omit", // include, *same-origin, omit
     });
     console.log(req);
     if (req.status != 200)
-        throw new Error(req.status + " Unable to load " + req.url);
+        throw new Error(req.status + ". Unable to load " + req.url);
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
     const reader = req.body.getReader();

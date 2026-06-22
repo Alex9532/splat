@@ -227,13 +227,13 @@
 				background: #22ff00;
 				transition: width 0.01s ease-in-out;
 			}
-			#intro-status {
+			.intro-status {
 				font-size: x-small;
 				color: white;
 			}
-			#intro-status::after {
+			.intro-status::after {
 				content: '';
-				animation: ellipsis 1.6s steps(1, end) infinite;
+				animation: ellipsis 2s steps(1, end) infinite;
 			}
 			@keyframes ellipsis {
 				0%   { content: ''; }
@@ -241,6 +241,12 @@
 				66%  { content: '..'; }
 				99% { content: '...'; }
 				100% { content: '...'; }
+			}
+			.hidden-thingy {
+				display: none;
+			}
+			.pause-anim {
+				animation-play-state: paused;
 			}
 		</style>
 	</head>
@@ -264,10 +270,10 @@
 					</div>
 				</div>
 			</div>
-			<div id="intro-progress">
+			<div id="intro-progress" class="hidden-thingy">
 				<div id="intro-bar"></div>
 			</div>
-			<div id="intro-status">Downloading</div>
+			<div id="intro-status" class="intro-status" class="pause-anim">Loading</div>
 		</div>
 
 		<script>
