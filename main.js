@@ -1378,18 +1378,8 @@ async function main() {
         const currentFps = 1000 / (now - lastFrame) || 0;
         avgFps = avgFps * 0.9 + currentFps * 0.1;
 
-        // Gradually reveal splats by increasing displayedVertexCount
-        if (displayedVertexCount < vertexCount) {
-            const remaining = vertexCount - displayedVertexCount;
-            let inc;
-            if (REVEAL_FRACTION <= 0) {
-                // one-per-frame behavior
-                inc = 1;
-            } else {
-                inc = Math.max(1, Math.floor(Math.min(MAX_REVEAL_PER_FRAME, remaining * REVEAL_FRACTION)));
-            }
-            displayedVertexCount = Math.min(vertexCount, displayedVertexCount + inc);
-        }
+        // Display all loaded gaussians
+        displayedVertexCount = vertexCount;
 
         if (displayedVertexCount > 0) {
             document.getElementById("spinner").style.display = "none";
