@@ -419,53 +419,16 @@ function createWorker(self) {
 
     function runSort(viewProj) {
         if (!buffer) return;
-        const f_buffer = new Float32Array(buffer);
-        if (lastVertexCount == vertexCount) {
-            let dot =
-                lastProj[2] * viewProj[2] +
-                lastProj[6] * viewProj[6] +
-                lastProj[10] * viewProj[10];
-            if (Math.abs(dot - 1) < 0.01) {
-                return;
-            }
-        } else {
+        if (lastVertexCount !== vertexCount) {
             generateTexture();
             lastVertexCount = vertexCount;
         }
 
-        console.time("sort");
-        let maxDepth = -Infinity;
-        let minDepth = Infinity;
-        let sizeList = new Int32Array(vertexCount);
-        for (let i = 0; i < vertexCount; i++) {
-            let depth =
-                ((viewProj[2] * f_buffer[8 * i + 0] +
-                    viewProj[6] * f_buffer[8 * i + 1] +
-                    viewProj[10] * f_buffer[8 * i + 2]) *
-                    4096) |
-                0;
-            sizeList[i] = depth;
-            if (depth > maxDepth) maxDepth = depth;
-            if (depth < minDepth) minDepth = depth;
+        if (depthIndex.length !== vertexCount) {
+            depthIndex = new Uint32Array(vertexCount);
+            for (let i = 0; i < vertexCount; i++) depthIndex[i] = i;
         }
 
-        // This is a 16 bit single-pass counting sort
-        let depthInv = (maxDepth === minDepth) ? 1 : (256 * 256 - 1) / (maxDepth - minDepth);
-        let counts0 = new Uint32Array(256 * 256);
-        for (let i = 0; i < vertexCount; i++) {
-            sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
-            counts0[sizeList[i]]++;
-        }
-        let starts0 = new Uint32Array(256 * 256);
-        for (let i = 1; i < 256 * 256; i++)
-            starts0[i] = starts0[i - 1] + counts0[i - 1];
-        depthIndex = new Uint32Array(vertexCount);
-        for (let i = 0; i < vertexCount; i++)
-            depthIndex[starts0[sizeList[i]]++] = i;
-
-        console.timeEnd("sort");
-
-        lastProj = viewProj;
         self.postMessage({ depthIndex, viewProj, vertexCount }, [
             depthIndex.buffer,
         ]);
@@ -794,11 +757,15 @@ async function main() {
     let displayedVertexCount = 0;
 
     // Reveal parameters (tweak these constants to change incremental reveal speed)
+    // - revealCount: fixed number of splats to reveal per frame
     // - revealFraction: fraction of remaining splats to reveal per frame (0..1)
-    // - maxRevealPerFrame: cap on how many splats we reveal in a single frame
-    // Control via URL: ?revealFraction=0.1&maxRevealPerFrame=500
-    const revealFraction = parseFloat(params.get("revealFraction")) || 1.0; // default: 100% of remaining per frame
-    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000; // safety cap
+    // - maxRevealPerFrame: cap on how many splats we reveal in a single frame when using fraction mode
+    // Control via URL: ?revealCount=200 or ?revealFraction=0.001&maxRevealPerFrame=500
+    const revealCount = parseInt(params.get("revealCount")) || 0;
+    const revealFraction = params.has("revealFraction")
+        ? parseFloat(params.get("revealFraction"))
+        : 0;
+    const maxRevealPerFrame = parseInt(params.get("maxRevealPerFrame")) || 2000;
 
     let projectionMatrix;
 
@@ -890,10 +857,12 @@ async function main() {
     resize();
 
     worker.onmessage = (e) => {
-        if (e.data.buffer) {
-            splatData = new Uint8Array(e.data.buffer);
+        if (e.data.buffer || e.data.texdata || e.data.depthIndex) {
             document.getElementById("message").innerText = "";
             document.getElementById("spinner").style.display = "none";
+        }
+        if (e.data.buffer) {
+            splatData = new Uint8Array(e.data.buffer);
             if (e.data.save) {
                 const blob = new Blob([splatData.buffer], {
                     type: "application/octet-stream",
@@ -1537,7 +1506,7 @@ async function main() {
     
     // Download complete, now process the full buffer
     if (!stopLoading) {
-        messageEl.innerText = "Processing...";
+        messageEl.innerText = "";
         if (isPly(splatData)) {
             // ply file magic header means it should be handled differently
             const usableBytes = Math.floor(bytesRead / rowLength) * rowLength || bytesRead;
