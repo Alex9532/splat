@@ -817,6 +817,13 @@ async function main() {
     document.body.style.background = initialBg;
     let displayedVertexCount = 0;
 
+    // Reveal parameters (tweak these constants to change incremental reveal speed)
+    // - REVEAL_FRACTION: fraction of remaining splats to reveal per frame (0..1)
+    // - MAX_REVEAL_PER_FRAME: cap on how many splats we reveal in a single frame
+    // Set REVEAL_FRACTION to 0 for one-per-frame behavior.
+    const REVEAL_FRACTION = 0.02; // default: 2% of remaining per frame
+    const MAX_REVEAL_PER_FRAME = 2000; // safety cap
+
     let projectionMatrix;
 
     const gl = canvas.getContext("webgl2", {
@@ -1398,7 +1405,13 @@ async function main() {
         // Gradually reveal splats by increasing displayedVertexCount
         if (displayedVertexCount < vertexCount) {
             const remaining = vertexCount - displayedVertexCount;
-            const inc = Math.max(1, Math.floor(Math.min(2000, remaining * 0.08)));
+            let inc;
+            if (REVEAL_FRACTION <= 0) {
+                // one-per-frame behavior
+                inc = 1;
+            } else {
+                inc = Math.max(1, Math.floor(Math.min(MAX_REVEAL_PER_FRAME, remaining * REVEAL_FRACTION)));
+            }
             displayedVertexCount = Math.min(vertexCount, displayedVertexCount + inc);
         }
 
