@@ -797,7 +797,7 @@ async function main() {
     // - REVEAL_FRACTION: fraction of remaining splats to reveal per frame (0..1)
     // - MAX_REVEAL_PER_FRAME: cap on how many splats we reveal in a single frame
     // Set REVEAL_FRACTION to 0 for one-per-frame behavior.
-    const REVEAL_FRACTION = 0.02; // default: 2% of remaining per frame
+    const REVEAL_FRACTION = 1.00; // default: 100% of remaining per frame
     const MAX_REVEAL_PER_FRAME = 2000; // safety cap
 
     let projectionMatrix;
