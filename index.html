@@ -185,12 +185,88 @@
 			body.nohf #progress, body.nohf .cube-face {
 				background: #083301;
 			}
+
+			/* intro overlay */
+			#intro {
+				position: fixed;
+				inset: 0;
+				z-index: 9999;
+				background: #083301;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 18px;
+				pointer-events: none;
+			}
+			#intro.hiding {
+				animation: introFadeOut 1s ease-in-out forwards;
+			}
+			@keyframes introFadeOut {
+				to { opacity: 0; }
+			}
+			#intro-progress {
+				width: 200px;
+				height: 5px;
+				background: rgba(34,255,0,0.2);
+			}
+			#intro-bar {
+				height: 100%;
+				width: 0%;
+				background: #22ff00;
+				transition: width 0.1s ease-in-out;
+			}
+			#intro-status {
+				font-size: x-small;
+				color: white;
+			}
+			#intro-status::after {
+				content: '';
+				animation: ellipsis 1.6s steps(1, end) infinite;
+			}
+			@keyframes ellipsis {
+				0%   { content: ''; }
+				33%  { content: '.'; }
+				66%  { content: '..'; }
+				100% { content: '...'; }
+			}
 		</style>
 	</head>
 	<body>
 		<script>
 			if(location.host.includes('hf.space')) document.body.classList.add('nohf');
 		</script>
+
+		<div id="intro">
+			<div class="cube-wrapper">
+				<div class="cube">
+					<div class="cube-faces">
+						<div class="cube-face bottom"></div>
+						<div class="cube-face top"></div>
+						<div class="cube-face left"></div>
+						<div class="cube-face right"></div>
+						<div class="cube-face back"></div>
+						<div class="cube-face front"></div>
+					</div>
+				</div>
+			</div>
+			<div id="intro-progress">
+				<div id="intro-bar"></div>
+			</div>
+			<div id="intro-status">Downloading</div>
+		</div>
+
+		<script>
+			window.introSetProgress = function(pct) {
+				document.getElementById('intro-bar').style.width = pct + '%';
+			};
+			window.introHide = function() {
+				const el = document.getElementById('intro');
+				el.classList.add('hiding');
+				el.addEventListener('animationend', () => { el.style.display = 'none'; }, { once: true });
+			};
+		</script>
+
 		<div id="info">
 			<p>
 			<small class="nohf">

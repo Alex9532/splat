@@ -787,10 +787,6 @@ async function main() {
     const canvas = document.getElementById("canvas");
     const fps = document.getElementById("fps");
     const camid = document.getElementById("camid");
-    const initialBg = "#083301";
-    let bgChanged = false;
-    // Ensure initial background during load phases
-    document.body.style.background = initialBg;
 
     let projectionMatrix;
 
@@ -1372,10 +1368,7 @@ async function main() {
 
         if (vertexCount > 0) {
             document.getElementById("spinner").style.display = "none";
-            if (!bgChanged) {
-                document.body.style.background = "black";
-                bgChanged = true;
-            }
+            if (window.introHide) { window.introHide(); window.introHide = null; }
             gl.uniformMatrix4fv(u_view, false, actualViewMatrix);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArraysInstanced(gl.TRIANGLE_FAN, 0, 4, vertexCount);
@@ -1493,6 +1486,14 @@ async function main() {
         splatData.set(value, bytesRead);
         bytesRead += value.length;
 
+        // Update intro progress bar
+        if (window.introSetProgress) {
+            const pct = parsedLength > 0
+                ? Math.min(99, (bytesRead / parsedLength) * 100)
+                : Math.min(99, Math.min(bytesRead / 30_000_000, 1) * 99);
+            window.introSetProgress(pct);
+        }
+
         if (vertexCount > lastVertexCount) {
             if (!isPly(splatData)) {
                 const usableBytes = Math.floor(bytesRead / rowLength) * rowLength;
@@ -1511,6 +1512,7 @@ async function main() {
         }
     }
     if (!stopLoading) {
+        if (window.introSetProgress) window.introSetProgress(100);
         if (isPly(splatData)) {
             // ply file magic header means it should be handled differently
             const usableBytes = Math.floor(bytesRead / rowLength) * rowLength || bytesRead;
