@@ -759,8 +759,6 @@ async function main() {
     console.log(req);
     if (req.status != 200)
         throw new Error(req.status + " Unable to load " + req.url);
-        document.getElementById("cube-wrapper").style.display = "none";
-        document.getElementById("message").innerText = err.toString();
 
     const rowLength = 3 * 4 + 3 * 4 + 4 + 4;
     const reader = req.body.getReader();
@@ -1543,6 +1541,6 @@ async function main() {
 }
 
 main().catch((err) => {
-    document.getElementById("cube-wrapper").style.display = "none";
+    document.getElementById("spinner").style.display = "none";
     document.getElementById("message").innerText = err.toString();
 });
