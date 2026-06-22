@@ -438,19 +438,32 @@ function createWorker(self) {
         let minDepth = Infinity;
         let sizeList = new Int32Array(vertexCount);
         for (let i = 0; i < vertexCount; i++) {
+            // Calculate depth (z-distance)
             let depth =
                 ((viewProj[2] * f_buffer[8 * i + 0] +
                     viewProj[6] * f_buffer[8 * i + 1] +
                     viewProj[10] * f_buffer[8 * i + 2]) *
                     4096) |
                 0;
-            sizeList[i] = depth;
-            if (depth > maxDepth) maxDepth = depth;
-            if (depth < minDepth) minDepth = depth;
+            
+            // Calculate projected position for screen-center distance
+            let x = viewProj[0] * f_buffer[8 * i + 0] + viewProj[4] * f_buffer[8 * i + 1] + viewProj[8] * f_buffer[8 * i + 2] + viewProj[12];
+            let y = viewProj[1] * f_buffer[8 * i + 0] + viewProj[5] * f_buffer[8 * i + 1] + viewProj[9] * f_buffer[8 * i + 2] + viewProj[13];
+            let w = viewProj[3] * f_buffer[8 * i + 0] + viewProj[7] * f_buffer[8 * i + 1] + viewProj[11] * f_buffer[8 * i + 2] + viewProj[15];
+            x /= w; y /= w;
+            
+            // Combine depth with distance from screen center (0, 0)
+            // Closer to center and closer to camera = lower value = revealed first
+            let centerDist = Math.sqrt(x * x + y * y) * 2000;
+            let sortKey = ((centerDist + depth * 0.1) | 0);
+            
+            sizeList[i] = sortKey;
+            if (sortKey > maxDepth) maxDepth = sortKey;
+            if (sortKey < minDepth) minDepth = sortKey;
         }
 
         // This is a 16 bit single-pass counting sort
-        let depthInv = (256 * 256 - 1) / (maxDepth - minDepth);
+        let depthInv = (maxDepth === minDepth) ? 1 : (256 * 256 - 1) / (maxDepth - minDepth);
         let counts0 = new Uint32Array(256 * 256);
         for (let i = 0; i < vertexCount; i++) {
             sizeList[i] = ((sizeList[i] - minDepth) * depthInv) | 0;
@@ -1374,7 +1387,7 @@ async function main() {
         // Gradually reveal splats by increasing displayedVertexCount
         if (displayedVertexCount < vertexCount) {
             const remaining = vertexCount - displayedVertexCount;
-            const inc = Math.max(1, Math.floor(Math.min(1000, remaining * 0.02)));
+            const inc = Math.max(1, Math.floor(Math.min(2000, remaining * 0.08)));
             displayedVertexCount = Math.min(vertexCount, displayedVertexCount + inc);
         }
 
